@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         APP_NAME   = 'cloudtask-app'
-        DEPLOY_DIR = "/home/${EC2_USER}/cloudtask-app"
+        DEPLOY_DIR = '/var/lib/jenkins/cloudtask-app'
     }
 
     parameters {
@@ -38,48 +38,30 @@ pipeline {
             }
         }
 
-        // Optional: add real tests here, e.g. `npm test`
         stage('Test') {
             steps {
                 sh 'echo "No automated tests configured yet — add npm test here."'
             }
         }
 
-        stage('Package') {
+        stage('Deploy locally') {
             steps {
                 sh '''
-                  rm -f ${APP_NAME}.tar.gz
-                  tar --exclude="node_modules" --exclude=".git" -czf ${APP_NAME}.tar.gz .
+                    set -e
+                    mkdir -p "${DEPLOY_DIR}"
+                    rsync -a --exclude=".env" --exclude=".git" ./ "${DEPLOY_DIR}/"
+                    cd "${DEPLOY_DIR}"
+
+                    if [ ! -f .env ]; then
+                        echo "WARNING: .env missing in ${DEPLOY_DIR} - create it once manually before first deploy."
+                        exit 1
+                    fi
+
+                    npm ci --production
+                    npm run migrate || true
+                    pm2 startOrRestart ecosystem.config.js --env production
+                    pm2 save
                 '''
-                archiveArtifacts artifacts: "${APP_NAME}.tar.gz", fingerprint: true
-            }
-        }
-
-        stage('Deploy to EC2') {
-            steps {
-                sshagent(credentials: ['ec2-ssh-key']) {
-                    sh '''
-                        # Copy the packaged build to the EC2 instance
-                        scp -o StrictHostKeyChecking=no ${APP_NAME}.tar.gz ${EC2_USER}@${EC2_HOST}:/tmp/${APP_NAME}.tar.gz
-
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} '
-                            set -e
-                            mkdir -p '"${DEPLOY_DIR}"'
-                            tar -xzf /tmp/'"${APP_NAME}"'.tar.gz -C '"${DEPLOY_DIR}"'
-                            cd '"${DEPLOY_DIR}"'
-                            npm ci --production
-
-                            if [ ! -f .env ]; then
-                                echo "WARNING: .env missing on server - create it once manually before first deploy."
-                            fi
-
-                            npm run migrate || true
-
-                            pm2 startOrRestart ecosystem.config.js --env production
-                            pm2 save
-                        '
-                    '''
-                }
             }
         }
 
@@ -87,7 +69,7 @@ pipeline {
             steps {
                 sh '''
                   sleep 5
-                  curl -sf http://${EC2_HOST}:3000/health || (echo "Health check failed" && exit 1)
+                  curl -sf http://localhost:3000/health || (echo "Health check failed" && exit 1)
                 '''
             }
         }
@@ -95,7 +77,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ Deployed ${APP_NAME} to ${EC2_HOST} successfully."
+            echo "✅ Deployed ${APP_NAME} locally and restarted via PM2."
         }
         failure {
             echo "❌ Deployment failed — check the stage logs above."
