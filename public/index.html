@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CloudTask Manager</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>☁️ CloudTask Manager</h1>
+      <p>Node.js &middot; EC2 &middot; RDS MySQL &middot; S3</p>
+    </header>
+
+    <main>
+      <section class="card form-card">
+        <h2 id="form-title">Add a new task</h2>
+        <form id="task-form">
+          <input type="hidden" id="task-id" />
+          <label>Title
+            <input type="text" id="title" required placeholder="e.g. Configure security group" />
+          </label>
+          <label>Description
+            <textarea id="description" rows="3" placeholder="Details about this task..."></textarea>
+          </label>
+          <label>Status
+            <select id="status">
+              <option value="pending">Pending</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </label>
+          <label>Attachment (uploaded to S3)
+            <input type="file" id="attachment" />
+          </label>
+          <div class="form-actions">
+            <button type="submit" id="submit-btn">Create Task</button>
+            <button type="button" id="cancel-btn" class="secondary hidden">Cancel</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Tasks</h2>
+        <div id="tasks-list" class="tasks-list">
+          <p class="empty-state">Loading tasks...</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Demo app for learning AWS CI/CD &mdash; EC2 + RDS + S3 + IAM Role</p>
+    </footer>
+  </div>
+
+  <script src="/script.js"></script>
+</body>
+</html>
